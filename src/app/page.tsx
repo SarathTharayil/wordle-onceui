@@ -25,12 +25,12 @@ const getDailyWord = (): string => {
 
 const SOLUTION = getDailyWord();
 
-const STORAGE_KEY = 'wordleGameState1';
+const STORAGE_KEY = 'wordleGameState';
 
 export default function Home() {
   // Initialize state from localStorage or default values
   const initializeState = () => {
-    const savedState = localStorage.getItem(STORAGE_KEY);
+    const savedState = window.localStorage.getItem(STORAGE_KEY);
     if (savedState) {
       const parsedState = JSON.parse(savedState);
       // Check if the saved solution matches current daily word
