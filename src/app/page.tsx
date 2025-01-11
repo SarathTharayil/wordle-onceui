@@ -193,7 +193,7 @@ export default function Home() {
           setGameState(prevState => ({
             ...prevState,
             gameOver: true,
-            notification: `game over! solution was "${SOLUTION}".`,
+            notification: `game over! reset the game and try again".`,
           }));
         } else {
           setGameState(prevState => ({
@@ -276,6 +276,11 @@ export default function Home() {
     };
   }, [typeLetter, hitEnter, hitBackspace, isGameFinished]);
 
+  const resetGame = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setGameState(defaultState);
+  };
+
   return (
     <Column
       fillWidth
@@ -297,9 +302,23 @@ export default function Home() {
           >
             <Logo size="m" icon={true} wordmark={false} href="https://saraththarayil.com" />
             <Row gap="12" hide="s">
+              <Button
+                onClick={resetGame}
+                variant="tertiary"
+                size="s"
+                prefixIcon = "refresh"
+              >
+                Reset
+              </Button>
               <StyleOverlay top="20" right="24" />
             </Row>
             <Row gap="16" show="s" alignItems="center" paddingRight="24">
+              <IconButton
+                onClick={resetGame}
+                variant="tertiary"
+                size="s"
+                icon="refresh"
+              />
               <StyleOverlay top="20" right="24" />
             </Row>
           </Row>
