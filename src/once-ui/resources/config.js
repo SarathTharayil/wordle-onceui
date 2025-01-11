@@ -16,7 +16,7 @@ const style = {
 
 // default metadata
 const meta = {
-  title: "wordle - saraththarayil.com",
+  title: "Wordle",
   description:
     "",
 };

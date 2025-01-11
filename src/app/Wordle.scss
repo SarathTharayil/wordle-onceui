@@ -1,0 +1,58 @@
+.wordle {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  padding: 20px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e293b 0%, #262338 100%);
+  color: #f8f8f8;
+
+  &:focus {
+    outline: none;
+  }
+
+  .title {
+    text-transform: capitalize;
+    font-family: "Roboto Slab", sans-serif;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .notification {
+    font-family: 'Figtree';
+    text-align: center;
+    height: 1rem;
+    margin: 1em;
+    color: salmon;
+    font-weight: 600;
+    font-size: 0.90rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    &--green {
+      color: #3BB273;
+    }
+  }
+}
+
+// Responsive Styles
+@media (max-width: 600px) {
+  .title {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .title {
+    font-size: 1.5rem;
+  }
+}
+
+.header{
+  font-family: "Figtree";
+}

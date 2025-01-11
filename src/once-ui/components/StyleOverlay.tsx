@@ -17,29 +17,10 @@ const StyleOverlay = forwardRef<HTMLDivElement, StyleOverlayProps>(({ ...rest },
     <Flex ref={ref} {...rest} fillHeight position="fixed" zIndex={1}>
       <IconButton
         variant={isOpen ? "secondary" : "primary"}
-        onClick={togglePanel}
-        icon={isOpen ? "close" : "sparkle"}
+        icon="openLink"
+        href="https://www.saraththarayil.com/work"
       />
-      <Flex
-        as="aside"
-        className={`${styles.panel} ${isOpen && styles.open}`}
-        maxWidth={28}
-        style={{
-          maxHeight: "calc(100% - var(--static-space-16))",
-        }}
-        fillHeight
-        position="fixed"
-        shadow="xl"
-        top="8"
-        right="8"
-        transition="macro-medium"
-        background="page"
-        overflow="hidden"
-        radius="xl"
-        border="neutral-medium"
-      >
-        <StylePanel fill overflowY="scroll" padding="16" />
-      </Flex>
+
     </Flex>
   );
 });

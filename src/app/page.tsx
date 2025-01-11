@@ -1,48 +1,182 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import classNames from "classnames";
-import Keyboard from "/Keyboard.jsx"
+import { useState, useRef, useEffect, useCallback } from "react";
+import Rowmain from "./Row";
+import Keyboard from "./Keyboard";
+import { LETTERS, potentialWords } from "./lettersAndWords";
 import {
-  Heading,
   Text,
-  Button,
-  Icon,
-  InlineCode,
+  Row,
   Logo,
-  Background,
-  useToast,
-  Fade,
-  DateRange,
+  Button,
+  StyleOverlay,
   IconButton,
   Column,
-  Row,
-  StyleOverlay,
 } from "@/once-ui/components";
-import { CodeBlock, MediaUpload } from "@/once-ui/modules";
+
+const getDailyWord = () => {
+  // Calculate days since epoch (January 1, 1970)
+  const today = new Date();
+  const start = new Date(1970, 0, 1);
+  const diff = today - start;
+  const daysSinceEpoch = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  // Use the day number to select a word from the array
+  const wordIndex = daysSinceEpoch % potentialWords.length;
+  return potentialWords[wordIndex];
+};
+
+const SOLUTION = getDailyWord();
 
 export default function Home() {
-  const { addToast } = useToast();
-  const [email, setEmail] = useState("");
+  const [guesses, setGuesses] = useState<string[]>(Array(6).fill("     "));
+  const [solutionFound, setSolutionFound] = useState<boolean>(false);
+  const [activeLetterIndex, setActiveLetterIndex] = useState<number>(0);
+  const [notification, setNotification] = useState<string>("");
+  const [activeRowIndex, setActiveRowIndex] = useState<number>(0);
+  const [failedGuesses, setFailedGuesses] = useState<string[]>([]);
+  const [correctLetters, setCorrectLetters] = useState<string[]>([]);
+  const [presentLetters, setPresentLetters] = useState<string[]>([]);
+  const [absentLetters, setAbsentLetters] = useState<string[]>([]);
 
+  const wordleRef = useRef<HTMLInputElement>(null);
+
+  const typeLetter = useCallback((letter: string) => {
+    if (activeLetterIndex < 5) {
+      setNotification("");
+      const newGuesses = [...guesses];
+      newGuesses[activeRowIndex] = replaceCharacter(
+        newGuesses[activeRowIndex],
+        activeLetterIndex,
+        letter
+      );
+      setGuesses(newGuesses);
+      setActiveLetterIndex((index) => index + 1);
+    }
+  }, [guesses, activeLetterIndex, activeRowIndex]);
+
+  const replaceCharacter = (string: string, index: number, replacement: string): string => {
+    return (
+      string.slice(0, index) +
+      replacement +
+      string.slice(index + replacement.length)
+    );
+  };
+
+  const hitEnter = useCallback(() => {
+    if (activeLetterIndex === 5) {
+      const currentGuess = guesses[activeRowIndex];
+      if (!potentialWords.includes(currentGuess)) {
+        setNotification("that might not be an actual word.");
+      } else if (failedGuesses.includes(currentGuess)) {
+        setNotification("word already tried.");
+      } else if (currentGuess === SOLUTION) {
+        setSolutionFound(true);
+        setNotification("well done!");
+        setCorrectLetters([...SOLUTION]);
+      } else {
+        const newCorrectLetters: string[] = [];
+        [...currentGuess].forEach((letter, index) => {
+          if (SOLUTION[index] === letter) newCorrectLetters.push(letter);
+        });
+        setCorrectLetters([...new Set(newCorrectLetters)]);
+  
+        setPresentLetters([
+          ...new Set([
+            ...presentLetters,
+            ...[...currentGuess].filter((letter) => SOLUTION.includes(letter)),
+          ]),
+        ]);
+  
+        setAbsentLetters([
+          ...new Set([
+            ...absentLetters,
+            ...[...currentGuess].filter((letter) => !SOLUTION.includes(letter)),
+          ]),
+        ]);
+  
+        setFailedGuesses([...failedGuesses, currentGuess]);
+  
+        if (activeRowIndex === 5) {
+          setNotification(`game over! solution was "${SOLUTION}".`);
+        } else {
+          setActiveRowIndex((index) => index + 1);
+          setActiveLetterIndex(0);
+        }
+      }
+    } else {
+      setNotification("five-letter word needed.");
+    }
+  }, [
+    activeLetterIndex,
+    activeRowIndex,
+    guesses,
+    failedGuesses,
+    presentLetters,
+    absentLetters,
+    SOLUTION,
+  ]);
+  
+
+  const hitBackspace = useCallback(() => {
+    setNotification("");
+    if (guesses[activeRowIndex][0] !== " ") {
+      const newGuesses = [...guesses];
+      newGuesses[activeRowIndex] = replaceCharacter(newGuesses[activeRowIndex], activeLetterIndex - 1, " ");
+      setGuesses(newGuesses);
+      setActiveLetterIndex((index) => index - 1);
+    }
+  }, [guesses, activeRowIndex, activeLetterIndex]);
+
+  const handleKeyDown = (event) => {
+    if (solutionFound) return;
+
+    if (LETTERS.includes(event.key)) {
+      typeLetter(event.key);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      hitEnter();
+      return;
+    }
+
+    if (event.key === "Backspace") {
+      hitBackspace();
+    }
+  };
+
+  // useEffect for handling keydown events
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toUpperCase();
+      if (LETTERS.includes(key)) {
+        typeLetter(key);
+      } else if (event.key === "Enter") {
+        hitEnter();
+      } else if (event.key === "Backspace") {
+        hitBackspace();
+      }
+    };
+
+    document.addEventListener("keydown", handleGlobalKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [typeLetter, hitEnter, hitBackspace]);
 
   return (
-    <Column fillWidth paddingY="80" paddingX="s" alignItems="center" flex={1}>
-      <Fade
-        zIndex={3}
-        pattern={{
-          display: true,
-          size: "4",
-        }}
-        position="fixed"
-        top="0"
-        left="0"
-        to="bottom"
-        height={5}
-        fillWidth
-        blur={0.25}
-      />
+    
+    <Column
+      fillWidth
+      paddingY="20"
+      paddingX="s"
+      alignItems="center"
+      flex={1}
+      justifyContent="center"  // Center all content vertically
+    >
+      <Column fillWidth alignItems="center" gap="8" padding="32" position="relative">
       <Row position="fixed" top="0" fillWidth justifyContent="center" zIndex={3}>
         <Row
           data-border="rounded"
@@ -52,116 +186,64 @@ export default function Home() {
           paddingLeft="32"
           paddingY="20"
         >
-          <Logo size="m" icon={false} href="https://www.saraththarayil.com" />
+          <Logo size="m" icon={true} wordmark={false} href="https://saraththarayil.com" />
           <Row gap="12" hide="s">
-            <Button
-              href="https://github.com/once-ui-system/nextjs-starter"
-              prefixIcon="github"
-              size="s"
-              label="GitHub"
-              weight="default"
-              variant="tertiary"
-            />
             <StyleOverlay top="20" right="24" />
           </Row>
           <Row gap="16" show="s" alignItems="center" paddingRight="24">
-            <IconButton
-              href="https://github.com/once-ui-system/nextjs-starter"
-              icon="github"
-              variant="tertiary"
-            />
             <StyleOverlay top="20" right="24" />
           </Row>
         </Row>
       </Row>
-      <Column
-        overflow="hidden"
-        as="main"
-        maxWidth="l"
-        position="relative"
-        radius="xl"
-        alignItems="center"
-        border="neutral-alpha-weak"
-        fillWidth
-      >
-        <Column
-          fillWidth
-          alignItems="center"
-          gap="48"
-          radius="xl"
-          paddingTop="80"
-          position="relative"
-        >
-          <Background
-            mask={{
-              x: 0,
-              y: 48,
-            }}
-            position="absolute"
-            grid={{
-              display: true,
-              width: "0.25rem",
-              color: "neutral-alpha-medium",
-              height: "0.25rem",
-            }}
-          />
-          <Background
-            mask={{
-              x: 80,
-              y: 0,
-              radius: 100,
-            }}
-            position="absolute"
-            gradient={{
-              display: true,
-              tilt: -35,
-              height: 50,
-              width: 75,
-              x: 100,
-              y: 40,
-              colorStart: "accent-solid-medium",
-              colorEnd: "static-transparent",
-            }}
-          />
-          <Background
-            mask={{
-              x: 100,
-              y: 0,
-              radius: 100,
-            }}
-            position="absolute"
-            gradient={{
-              display: true,
-              opacity: 100,
-              tilt: -35,
-              height: 20,
-              width: 120,
-              x: 120,
-              y: 35,
-              colorStart: "brand-solid-strong",
-              colorEnd: "static-transparent",
-            }}
-          />
-          <Column fillWidth alignItems="center" gap="32" padding="32" position="relative">
-            <InlineCode radius="xl" shadow="m" fit paddingX="16" paddingY="8">
-              wordle from
-              <Text onBackground="brand-medium" marginLeft="8">
-              <a href= "https://www.saraththarayil.com" target="_blank">saraththarayil.com </a>
-              </Text>
-            </InlineCode>
+        <Text variant="display-strong-s">
+          wordle
+        </Text>
+        <Column fillWidth alignItems="center" gap="8" padding="32" position="relative">
+        <div className={`notification ${solutionFound && "notification--green"}`}>
+          {notification}
+        </div>
 
-            <Column alignItems="center" paddingTop="64" fillWidth gap="24">
-
-
-            
-            </Column>
-          </Column>
-
-        </Column>
-
+        {guesses.map((guess, index) => {
+          return (
+            <Rowmain
+              key={index}
+              word={guess}
+              applyRotation={
+                activeRowIndex > index ||
+                (solutionFound && activeRowIndex === index)
+              }
+              solution={SOLUTION}
+              bounceOnError={
+                notification !== "well done!" &&
+                notification !== "" &&
+                activeRowIndex === index
+              }
+            />
+          );
+        })}
+        
       </Column>
-
-      
+      </Column>
+      <div
+        ref={wordleRef}
+        tabIndex={0}
+        onBlur={(e) => {
+          e.target.focus();
+        }}
+        onKeyDown={handleKeyDown}
+        style={{
+          outline: "none",
+        }}
+      >
+        <Keyboard
+          presentLetters={presentLetters}
+          correctLetters={correctLetters}
+          absentLetters={absentLetters}
+          typeLetter={typeLetter}
+          hitEnter={hitEnter}
+          hitBackspace={hitBackspace}
+        />
+      </div>
     </Column>
   );
 }

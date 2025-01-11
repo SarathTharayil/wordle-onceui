@@ -10,15 +10,16 @@ import { baseURL, style, meta, og, schema, social } from "@/once-ui/resources/co
 import { Background, Column, Flex, ToastProvider } from "@/once-ui/components";
 
 import { Inter } from "next/font/google";
-import { Roboto_Mono } from "next/font/google";
 
-const primary = Inter({
+import { Manrope } from 'next/font/google';
+
+const primary = Manrope({
   variable: "--font-primary",
   subsets: ["latin"],
   display: "swap",
 });
 
-const code = Roboto_Mono({
+const code = Inter({
   variable: "--font-code",
   subsets: ["latin"],
   display: "swap",
