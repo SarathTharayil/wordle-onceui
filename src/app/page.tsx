@@ -14,6 +14,20 @@ import {
   Column,
 } from "@/once-ui/components";
 
+interface GameState {
+  guesses: string[];
+  solutionFound: boolean;
+  activeLetterIndex: number;
+  notification: string;
+  activeRowIndex: number;
+  failedGuesses: string[];
+  correctLetters: string[];
+  presentLetters: string[];
+  absentLetters: string[];
+  gameOver: boolean;
+  solution: string;
+}
+
 const getDailyWord = (): string => {
   const today: Date = new Date();
   const start: Date = new Date(1970, 0, 1);
@@ -24,67 +38,79 @@ const getDailyWord = (): string => {
 };
 
 const SOLUTION = getDailyWord();
-
 const STORAGE_KEY = 'wordleGameState';
 
 export default function Home() {
-  // Initialize state from localStorage or default values
-  const initializeState = () => {
-    const savedState = window.localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      const parsedState = JSON.parse(savedState);
-      // Check if the saved solution matches current daily word
-      if (parsedState.solution === SOLUTION) {
-        return parsedState;
-      }
-    }
-    return {
-      guesses: Array(6).fill("     "),
-      solutionFound: false,
-      activeLetterIndex: 0,
-      notification: "",
-      activeRowIndex: 0,
-      failedGuesses: [],
-      correctLetters: [],
-      presentLetters: [],
-      absentLetters: [],
-      gameOver: false,
-      solution: SOLUTION
-    };
+  // Initialize state with default values first
+  const defaultState = {
+    guesses: Array(6).fill("     "),
+    solutionFound: false,
+    activeLetterIndex: 0,
+    notification: "",
+    activeRowIndex: 0,
+    failedGuesses: [],
+    correctLetters: [],
+    presentLetters: [],
+    absentLetters: [],
+    gameOver: false,
+    solution: SOLUTION
   };
 
-  const initialState = initializeState();
-  const [guesses, setGuesses] = useState<string[]>(initialState.guesses);
-  const [solutionFound, setSolutionFound] = useState<boolean>(initialState.solutionFound);
-  const [activeLetterIndex, setActiveLetterIndex] = useState<number>(initialState.activeLetterIndex);
-  const [notification, setNotification] = useState<string>(initialState.notification);
-  const [activeRowIndex, setActiveRowIndex] = useState<number>(initialState.activeRowIndex);
-  const [failedGuesses, setFailedGuesses] = useState<string[]>(initialState.failedGuesses);
-  const [correctLetters, setCorrectLetters] = useState<string[]>(initialState.correctLetters);
-  const [presentLetters, setPresentLetters] = useState<string[]>(initialState.presentLetters);
-  const [absentLetters, setAbsentLetters] = useState<string[]>(initialState.absentLetters);
-  const [gameOver, setGameOver] = useState<boolean>(initialState.gameOver);
+  // Move localStorage logic into a useEffect
+  const [gameState, setGameState] = useState<GameState>(defaultState);
+  const {
+    guesses,
+    solutionFound,
+    activeLetterIndex,
+    notification,
+    activeRowIndex,
+    failedGuesses,
+    correctLetters,
+    presentLetters,
+    absentLetters,
+    gameOver
+  } = gameState;
 
-  const wordleRef = useRef<HTMLInputElement>(null);
+  // Load saved state on component mount
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        // Check if the saved solution matches current daily word
+        if (parsedState.solution === SOLUTION) {
+          setGameState(parsedState);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved state:', error);
+    }
+  }, []);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
-    const gameState = {
-      guesses,
-      solutionFound,
-      activeLetterIndex,
-      notification,
-      activeRowIndex,
-      failedGuesses,
-      correctLetters,
-      presentLetters,
-      absentLetters,
-      gameOver,
-      solution: SOLUTION
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+    try {
+      const gameStateToSave = {
+        guesses,
+        solutionFound,
+        activeLetterIndex,
+        notification,
+        activeRowIndex,
+        failedGuesses,
+        correctLetters,
+        presentLetters,
+        absentLetters,
+        gameOver,
+        solution: SOLUTION
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(gameStateToSave));
+    } catch (error) {
+      console.error('Error saving state:', error);
+    }
   }, [guesses, solutionFound, activeLetterIndex, notification, activeRowIndex, 
       failedGuesses, correctLetters, presentLetters, absentLetters, gameOver]);
+
+  const wordleRef = useRef<HTMLInputElement>(null);
 
   const isGameFinished = useCallback(() => {
     return solutionFound || gameOver;
@@ -94,17 +120,18 @@ export default function Home() {
     if (isGameFinished()) return;
     
     if (activeLetterIndex < 5) {
-      setNotification("");
-      const newGuesses = [...guesses];
-      newGuesses[activeRowIndex] = replaceCharacter(
-        newGuesses[activeRowIndex],
-        activeLetterIndex,
-        letter
-      );
-      setGuesses(newGuesses);
-      setActiveLetterIndex((index) => index + 1);
+      setGameState(prevState => ({
+        ...prevState,
+        notification: "",
+        guesses: prevState.guesses.map((guess, idx) => 
+          idx === activeRowIndex 
+            ? replaceCharacter(guess, activeLetterIndex, letter)
+            : guess
+        ),
+        activeLetterIndex: prevState.activeLetterIndex + 1
+      }));
     }
-  }, [guesses, activeLetterIndex, activeRowIndex, isGameFinished]);
+  }, [activeLetterIndex, activeRowIndex, isGameFinished]);
 
   const replaceCharacter = (string: string, index: number, replacement: string): string => {
     return (
@@ -120,48 +147,67 @@ export default function Home() {
     if (activeLetterIndex === 5) {
       const currentGuess = guesses[activeRowIndex];
       if (!potentialWords.includes(currentGuess)) {
-        setNotification("that might not be an actual word.");
+        setGameState(prevState => ({
+          ...prevState,
+          notification: "that might not be an actual word.",
+        }));
       } else if (failedGuesses.includes(currentGuess)) {
-        setNotification("word already tried.");
+        setGameState(prevState => ({
+          ...prevState,
+          notification: "word already tried.",
+        }));
       } else if (currentGuess === SOLUTION) {
-        setSolutionFound(true);
-        setNotification("well done!");
-        setCorrectLetters([...SOLUTION]);
-        setGameOver(true);
+        setGameState(prevState => ({
+          ...prevState,
+          solutionFound: true,
+          notification: "well done!",
+          correctLetters: [...SOLUTION],
+          gameOver: true,
+        }));
       } else {
         const newCorrectLetters: string[] = [];
         [...currentGuess].forEach((letter, index) => {
           if (SOLUTION[index] === letter) newCorrectLetters.push(letter);
         });
-        setCorrectLetters([...new Set(newCorrectLetters)]);
-  
-        setPresentLetters([
-          ...new Set([
-            ...presentLetters,
-            ...[...currentGuess].filter((letter) => SOLUTION.includes(letter)),
-          ]),
-        ]);
-  
-        setAbsentLetters([
-          ...new Set([
-            ...absentLetters,
-            ...[...currentGuess].filter((letter) => !SOLUTION.includes(letter)),
-          ]),
-        ]);
-  
-        setFailedGuesses([...failedGuesses, currentGuess]);
+        setGameState(prevState => ({
+          ...prevState,
+          correctLetters: [...new Set(newCorrectLetters)],
+          presentLetters: [
+            ...new Set([
+              ...prevState.presentLetters,
+              ...[...currentGuess].filter((letter) => SOLUTION.includes(letter)),
+            ]),
+          ],
+          absentLetters: [
+            ...new Set([
+              ...prevState.absentLetters,
+              ...[...currentGuess].filter((letter) => !SOLUTION.includes(letter)),
+            ]),
+          ],
+          failedGuesses: [...prevState.failedGuesses, currentGuess],
+          notification: "",
+        }));
   
         // Only set game over if we're at the last row AND it's a valid word
         if (activeRowIndex >= 5) {
-          setGameOver(true);
-          setNotification(`game over! solution was "${SOLUTION}".`);
+          setGameState(prevState => ({
+            ...prevState,
+            gameOver: true,
+            notification: `game over! solution was "${SOLUTION}".`,
+          }));
         } else {
-          setActiveRowIndex((index) => index + 1);
-          setActiveLetterIndex(0);
+          setGameState(prevState => ({
+            ...prevState,
+            activeRowIndex: prevState.activeRowIndex + 1,
+            activeLetterIndex: 0,
+          }));
         }
       }
     } else {
-      setNotification("five-letter word needed.");
+      setGameState(prevState => ({
+        ...prevState,
+        notification: "five-letter word needed.",
+      }));
     }
   }, [
     activeLetterIndex,
@@ -177,18 +223,19 @@ export default function Home() {
   const hitBackspace = useCallback(() => {
     if (isGameFinished()) return;
 
-    setNotification("");
     if (activeLetterIndex > 0) {
-      const newGuesses = [...guesses];
-      newGuesses[activeRowIndex] = replaceCharacter(
-        newGuesses[activeRowIndex],
-        activeLetterIndex - 1,
-        " "
-      );
-      setGuesses(newGuesses);
-      setActiveLetterIndex((index) => index - 1);
+      setGameState(prevState => ({
+        ...prevState,
+        notification: "",
+        guesses: prevState.guesses.map((guess, idx) => 
+          idx === activeRowIndex 
+            ? replaceCharacter(guess, activeLetterIndex - 1, " ")
+            : guess
+        ),
+        activeLetterIndex: prevState.activeLetterIndex - 1
+      }));
     }
-  }, [guesses, activeRowIndex, activeLetterIndex, isGameFinished]);
+  }, [activeLetterIndex, activeRowIndex, isGameFinished]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (isGameFinished()) return;
