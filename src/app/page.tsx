@@ -25,7 +25,7 @@ const getDailyWord = (): string => {
 
 const SOLUTION = getDailyWord();
 
-const STORAGE_KEY = 'wordleGameState';
+const STORAGE_KEY = 'wordleGameState1';
 
 export default function Home() {
   // Initialize state from localStorage or default values
