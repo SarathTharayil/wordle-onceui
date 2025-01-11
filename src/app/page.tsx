@@ -296,31 +296,29 @@ export default function Home() {
             data-border="rounded"
             justifyContent="space-between"
             maxWidth="l"
-            paddingRight="64"
+            paddingRight="32"
             paddingLeft="32"
             paddingY="20"
+            fillWidth
           >
             <Logo size="m" icon={true} wordmark={false} href="https://saraththarayil.com" />
-            <Row gap="12" hide="s">
+            <Row gap="12" hide="s" marginRight="0">
               <Button
                 onClick={resetGame}
                 variant="tertiary"
                 size="s"
-                prefixIcon = "refresh"
+                prefixIcon="refresh"
               >
                 Reset
               </Button>
-              <StyleOverlay top="20" right="24" />
             </Row>
-            <Row gap="16" show="s" alignItems="center" paddingRight="24">
+            <Row gap="16" show="s" alignItems="center">
               <IconButton
                 onClick={resetGame}
                 variant="tertiary"
                 size="s"
                 icon="refresh"
               />
-
-              <StyleOverlay top="20" right="24" />
             </Row>
           </Row>
         </Row>
