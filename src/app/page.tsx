@@ -206,7 +206,7 @@ export default function Home() {
     } else {
       setGameState(prevState => ({
         ...prevState,
-        notification: "five-letter word needed.",
+        notification: "try a five-letter word",
       }));
     }
   }, [
@@ -319,6 +319,7 @@ export default function Home() {
                 size="s"
                 icon="refresh"
               />
+
               <StyleOverlay top="20" right="24" />
             </Row>
           </Row>

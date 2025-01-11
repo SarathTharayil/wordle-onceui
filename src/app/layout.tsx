@@ -143,8 +143,8 @@ export default function RootLayout({
               height: 50,
               tilt: -40,
               opacity: 90,
-              colorStart: "accent-background-strong",
-              colorEnd: "page-background",
+              colorStart: "neutral-background-strong",
+              colorEnd: "neutral-background-medium",
             }}
             grid={{
               display: true,
