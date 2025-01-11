@@ -15,37 +15,84 @@ import {
 } from "@/once-ui/components";
 
 const getDailyWord = (): string => {
-  // Get the current date and epoch start date
   const today: Date = new Date();
   const start: Date = new Date(1970, 0, 1);
-
-  // Calculate the difference in milliseconds and convert to days
   const diff: number = today.getTime() - start.getTime();
   const daysSinceEpoch: number = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  // Select a word based on the calculated index
   const wordIndex: number = daysSinceEpoch % potentialWords.length;
   return potentialWords[wordIndex];
 };
 
-
-
 const SOLUTION = getDailyWord();
 
+const STORAGE_KEY = 'wordleGameState';
+
 export default function Home() {
-  const [guesses, setGuesses] = useState<string[]>(Array(6).fill("     "));
-  const [solutionFound, setSolutionFound] = useState<boolean>(false);
-  const [activeLetterIndex, setActiveLetterIndex] = useState<number>(0);
-  const [notification, setNotification] = useState<string>("");
-  const [activeRowIndex, setActiveRowIndex] = useState<number>(0);
-  const [failedGuesses, setFailedGuesses] = useState<string[]>([]);
-  const [correctLetters, setCorrectLetters] = useState<string[]>([]);
-  const [presentLetters, setPresentLetters] = useState<string[]>([]);
-  const [absentLetters, setAbsentLetters] = useState<string[]>([]);
+  // Initialize state from localStorage or default values
+  const initializeState = () => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      const parsedState = JSON.parse(savedState);
+      // Check if the saved solution matches current daily word
+      if (parsedState.solution === SOLUTION) {
+        return parsedState;
+      }
+    }
+    return {
+      guesses: Array(6).fill("     "),
+      solutionFound: false,
+      activeLetterIndex: 0,
+      notification: "",
+      activeRowIndex: 0,
+      failedGuesses: [],
+      correctLetters: [],
+      presentLetters: [],
+      absentLetters: [],
+      gameOver: false,
+      solution: SOLUTION
+    };
+  };
+
+  const initialState = initializeState();
+  const [guesses, setGuesses] = useState<string[]>(initialState.guesses);
+  const [solutionFound, setSolutionFound] = useState<boolean>(initialState.solutionFound);
+  const [activeLetterIndex, setActiveLetterIndex] = useState<number>(initialState.activeLetterIndex);
+  const [notification, setNotification] = useState<string>(initialState.notification);
+  const [activeRowIndex, setActiveRowIndex] = useState<number>(initialState.activeRowIndex);
+  const [failedGuesses, setFailedGuesses] = useState<string[]>(initialState.failedGuesses);
+  const [correctLetters, setCorrectLetters] = useState<string[]>(initialState.correctLetters);
+  const [presentLetters, setPresentLetters] = useState<string[]>(initialState.presentLetters);
+  const [absentLetters, setAbsentLetters] = useState<string[]>(initialState.absentLetters);
+  const [gameOver, setGameOver] = useState<boolean>(initialState.gameOver);
 
   const wordleRef = useRef<HTMLInputElement>(null);
 
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    const gameState = {
+      guesses,
+      solutionFound,
+      activeLetterIndex,
+      notification,
+      activeRowIndex,
+      failedGuesses,
+      correctLetters,
+      presentLetters,
+      absentLetters,
+      gameOver,
+      solution: SOLUTION
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+  }, [guesses, solutionFound, activeLetterIndex, notification, activeRowIndex, 
+      failedGuesses, correctLetters, presentLetters, absentLetters, gameOver]);
+
+  const isGameFinished = useCallback(() => {
+    return solutionFound || gameOver;
+  }, [solutionFound, gameOver]);
+
   const typeLetter = useCallback((letter: string) => {
+    if (isGameFinished()) return;
+    
     if (activeLetterIndex < 5) {
       setNotification("");
       const newGuesses = [...guesses];
@@ -57,7 +104,7 @@ export default function Home() {
       setGuesses(newGuesses);
       setActiveLetterIndex((index) => index + 1);
     }
-  }, [guesses, activeLetterIndex, activeRowIndex]);
+  }, [guesses, activeLetterIndex, activeRowIndex, isGameFinished]);
 
   const replaceCharacter = (string: string, index: number, replacement: string): string => {
     return (
@@ -68,6 +115,8 @@ export default function Home() {
   };
 
   const hitEnter = useCallback(() => {
+    if (isGameFinished()) return;
+
     if (activeLetterIndex === 5) {
       const currentGuess = guesses[activeRowIndex];
       if (!potentialWords.includes(currentGuess)) {
@@ -78,6 +127,7 @@ export default function Home() {
         setSolutionFound(true);
         setNotification("well done!");
         setCorrectLetters([...SOLUTION]);
+        setGameOver(true);
       } else {
         const newCorrectLetters: string[] = [];
         [...currentGuess].forEach((letter, index) => {
@@ -101,7 +151,9 @@ export default function Home() {
   
         setFailedGuesses([...failedGuesses, currentGuess]);
   
-        if (activeRowIndex === 5) {
+        // Only set game over if we're at the last row AND it's a valid word
+        if (activeRowIndex >= 5) {
+          setGameOver(true);
           setNotification(`game over! solution was "${SOLUTION}".`);
         } else {
           setActiveRowIndex((index) => index + 1);
@@ -119,21 +171,27 @@ export default function Home() {
     presentLetters,
     absentLetters,
     SOLUTION,
+    isGameFinished
   ]);
-  
 
   const hitBackspace = useCallback(() => {
+    if (isGameFinished()) return;
+
     setNotification("");
-    if (guesses[activeRowIndex][0] !== " ") {
+    if (activeLetterIndex > 0) {
       const newGuesses = [...guesses];
-      newGuesses[activeRowIndex] = replaceCharacter(newGuesses[activeRowIndex], activeLetterIndex - 1, " ");
+      newGuesses[activeRowIndex] = replaceCharacter(
+        newGuesses[activeRowIndex],
+        activeLetterIndex - 1,
+        " "
+      );
       setGuesses(newGuesses);
       setActiveLetterIndex((index) => index - 1);
     }
-  }, [guesses, activeRowIndex, activeLetterIndex]);
+  }, [guesses, activeRowIndex, activeLetterIndex, isGameFinished]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (solutionFound) return;
+    if (isGameFinished()) return;
   
     if (LETTERS.includes(event.key)) {
       typeLetter(event.key);
@@ -149,11 +207,11 @@ export default function Home() {
       hitBackspace();
     }
   };
-  
 
-  // useEffect for handling keydown events
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (isGameFinished()) return;
+
       const key = event.key.toUpperCase();
       if (LETTERS.includes(key)) {
         typeLetter(key);
@@ -169,65 +227,63 @@ export default function Home() {
     return () => {
       document.removeEventListener("keydown", handleGlobalKeyDown);
     };
-  }, [typeLetter, hitEnter, hitBackspace]);
+  }, [typeLetter, hitEnter, hitBackspace, isGameFinished]);
 
   return (
-    
     <Column
       fillWidth
       paddingY="20"
       paddingX="s"
       alignItems="center"
       flex={1}
-      justifyContent="center"  // Center all content vertically
+      justifyContent="center"
     >
       <Column fillWidth alignItems="center" gap="8" padding="32" position="relative">
-      <Row position="fixed" top="0" fillWidth justifyContent="center" zIndex={3}>
-        <Row
-          data-border="rounded"
-          justifyContent="space-between"
-          maxWidth="l"
-          paddingRight="64"
-          paddingLeft="32"
-          paddingY="20"
-        >
-          <Logo size="m" icon={true} wordmark={false} href="https://saraththarayil.com" />
-          <Row gap="12" hide="s">
-            <StyleOverlay top="20" right="24" />
-          </Row>
-          <Row gap="16" show="s" alignItems="center" paddingRight="24">
-            <StyleOverlay top="20" right="24" />
+        <Row position="fixed" top="0" fillWidth justifyContent="center" zIndex={3}>
+          <Row
+            data-border="rounded"
+            justifyContent="space-between"
+            maxWidth="l"
+            paddingRight="64"
+            paddingLeft="32"
+            paddingY="20"
+          >
+            <Logo size="m" icon={true} wordmark={false} href="https://saraththarayil.com" />
+            <Row gap="12" hide="s">
+              <StyleOverlay top="20" right="24" />
+            </Row>
+            <Row gap="16" show="s" alignItems="center" paddingRight="24">
+              <StyleOverlay top="20" right="24" />
+            </Row>
           </Row>
         </Row>
-      </Row>
         <Text variant="display-strong-s">
           wordle
         </Text>
         <Column fillWidth alignItems="center" gap="8" padding="32" position="relative">
-        <div className={`notification ${solutionFound && "notification--green"}`}>
-          {notification}
-        </div>
+          <div className={`notification ${solutionFound && "notification--green"}`}>
+            {notification}
+          </div>
 
-        {guesses.map((guess, index) => {
-          return (
-            <Rowmain
-              key={index}
-              word={guess}
-              applyRotation={
-                activeRowIndex > index ||
-                (solutionFound && activeRowIndex === index)
-              }
-              solution={SOLUTION}
-              bounceOnError={
-                notification !== "well done!" &&
-                notification !== "" &&
-                activeRowIndex === index
-              }
-            />
-          );
-        })}
-        
-      </Column>
+          {guesses.map((guess, index) => {
+            return (
+              <Rowmain
+                key={index}
+                word={guess}
+                applyRotation={
+                  activeRowIndex > index ||
+                  (solutionFound && activeRowIndex === index)
+                }
+                solution={SOLUTION}
+                bounceOnError={
+                  notification !== "well done!" &&
+                  notification !== "" &&
+                  activeRowIndex === index
+                }
+              />
+            );
+          })}
+        </Column>
       </Column>
       <div
         ref={wordleRef}
