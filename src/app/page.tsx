@@ -14,17 +14,21 @@ import {
   Column,
 } from "@/once-ui/components";
 
-const getDailyWord = () => {
-  // Calculate days since epoch (January 1, 1970)
-  const today = new Date();
-  const start = new Date(1970, 0, 1);
-  const diff = today - start;
-  const daysSinceEpoch = Math.floor(diff / (1000 * 60 * 60 * 24));
+const getDailyWord = (): string => {
+  // Get the current date and epoch start date
+  const today: Date = new Date();
+  const start: Date = new Date(1970, 0, 1);
 
-  // Use the day number to select a word from the array
-  const wordIndex = daysSinceEpoch % potentialWords.length;
+  // Calculate the difference in milliseconds and convert to days
+  const diff: number = today.getTime() - start.getTime();
+  const daysSinceEpoch: number = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  // Select a word based on the calculated index
+  const wordIndex: number = daysSinceEpoch % potentialWords.length;
   return potentialWords[wordIndex];
 };
+
+
 
 const SOLUTION = getDailyWord();
 
@@ -128,23 +132,24 @@ export default function Home() {
     }
   }, [guesses, activeRowIndex, activeLetterIndex]);
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (solutionFound) return;
-
+  
     if (LETTERS.includes(event.key)) {
       typeLetter(event.key);
       return;
     }
-
+  
     if (event.key === "Enter") {
       hitEnter();
       return;
     }
-
+  
     if (event.key === "Backspace") {
       hitBackspace();
     }
   };
+  
 
   // useEffect for handling keydown events
   useEffect(() => {
